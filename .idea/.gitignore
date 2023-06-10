@@ -6,4 +6,15 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
+# PyCharm project files
+.idea/
+
+# Compiled Python files
+*.pyc
+
+# Python cache directories
+__pycache__/
+
+# Virtual environment directories
+venv/
 .
