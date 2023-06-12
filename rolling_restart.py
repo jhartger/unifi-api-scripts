@@ -1,8 +1,10 @@
+import os
+import time
+
 import requests
 import urllib3
-import time
-import os
 from dotenv import load_dotenv
+
 
 # load environment variables from .env file in same directory
 load_dotenv()
