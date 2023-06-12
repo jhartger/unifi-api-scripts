@@ -5,8 +5,9 @@ import requests
 import urllib3
 from dotenv import load_dotenv
 
+# load environment variables from .env_example file in same directory
+from mail_notification import mail_notification
 
-# load environment variables from .env file in same directory
 load_dotenv()
 
 # UniFi controller details
@@ -23,8 +24,6 @@ login_url = f"https://{controller_ip}:{controller_port}/api/login"
 logout_url = f"https://{controller_ip}:{controller_port}/api/logout"
 ap_url = f"https://{controller_ip}:{controller_port}/api/s/{site_name}/stat/device"
 restart_ap_url = f"https://{controller_ip}:{controller_port}/api/s/{site_name}/cmd/devmgr/restart"
-
-print(requests.get(f"https://{controller_ip}:{controller_port}/status").text)
 
 # Login to UniFi controller
 login_data = {"username": controller_username, "password": controller_password}
@@ -67,14 +66,30 @@ if login_response.status_code == 200:
                             time.sleep(5)  # Wait for 5 seconds before checking the status again
                             continue
                     else:
-                        print(f"Failed to retrieve the status of access point {ap['mac']}. Moving to the next AP. Status Code: ", ap_status_response.status_code)
+                        print(f"Failed to retrieve the status of access point {ap['mac']}. Moving to the next AP. "
+                              f"Status Code: ", ap_status_response.status_code)
                         break
 
                     break  # Break out of the while loop if the access point is online
             else:
-                print(f"Failed to issue restart command for access point {ap['mac']}. Status Code: ", restart_response.status_code)
+                print(f"Failed to issue restart command for access point {ap['mac']}. Status Code: ",
+                      restart_response.status_code)
 
         print("Rolling restart of access points completed.")
+
+        # Retrieve AP information and send mail if error occurred
+        ap_response = requests.get(ap_url, cookies=cookies, verify=False)
+        if ap_response.status_code == 200:
+            ap_list = ap_response.json()["data"]
+
+            for ap in ap_list:
+                if ap["state"] != 1:
+                    new_ap = {f"Access Point: {['name']}", f"MAC Address: {ap['mac']}",
+                              f"Status: {ap['state']}", f"IP: {ap['ip']}"}
+                    ap_list_error.__dict__.update(new_ap)
+
+        if ap_list_error is not None:
+            mail_notification("RBW UAP Restart Issues", ap_list_error)
     else:
         print("Failed to retrieve the list of access points. Status Code: ", ap_response.status_code)
 

@@ -3,6 +3,12 @@ import requests
 import urllib3
 
 # Retrieve UniFi controller details from environment variables
+from dotenv import load_dotenv
+
+from mail_notification import mail_notification
+
+load_dotenv()
+
 controller_ip = os.getenv("CONTROLLER_IP")
 controller_port = os.getenv("CONTROLLER_PORT")
 controller_username = os.getenv("CONTROLLER_USERNAME")
@@ -28,6 +34,23 @@ login_response = requests.post(login_url, json=login_data, verify=True)
 if login_response.status_code == 200:
     print("Login successful.")
     cookies = login_response.cookies
+
+    # List for AP's which encountered issues
+    ap_list_error = None
+
+    # Retrieve AP information and send mail if error occurred
+    ap_response = requests.get(ap_url, cookies=cookies, verify=False)
+    if ap_response.status_code == 200:
+        ap_list = ap_response.json()["data"]
+
+        for ap in ap_list:
+            if ap["state"] == 1:
+                new_ap = {f"Access Point: {['name']}", f"MAC Address: {ap['mac']}",
+                          f"Status: {ap['state']}", f"IP: {ap['ip']}"}
+                ap_list_error.append(new_ap)
+
+    if ap_list_error is not None:
+        mail_notification("RBW UAP Restart Issues", ap_list_error)
 
     # get data for all access points of current site
     ap_response = requests.get(ap_url, cookies=cookies, verify=True)
