@@ -17,6 +17,9 @@ controller_username = os.getenv("CONTROLLER_USERNAME")
 controller_password = os.getenv("CONTROLLER_PASSWORD")
 site_name = os.getenv("SITE_NAME")
 
+# Subject for mail
+subject = os.getenv("SUBJECT")
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # API endpoints
@@ -77,19 +80,22 @@ if login_response.status_code == 200:
 
         print("Rolling restart of access points completed.")
 
+        # List for AP's which encountered issues
+        body = "List of all UAP's currently online\n"
+
         # Retrieve AP information and send mail if error occurred
         ap_response = requests.get(ap_url, cookies=cookies, verify=False)
         if ap_response.status_code == 200:
             ap_list = ap_response.json()["data"]
 
             for ap in ap_list:
-                if ap["state"] != 1:
-                    new_ap = {f"Access Point: {['name']}", f"MAC Address: {ap['mac']}",
-                              f"Status: {ap['state']}", f"IP: {ap['ip']}"}
-                    ap_list_error.__dict__.update(new_ap)
+                if "name" not in ap:
+                    continue
+                if ap["state"] == 1 and ap['type'] == "uap":
+                    body += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
 
-        if ap_list_error is not None:
-            mail_notification("RBW UAP Restart Issues", ap_list_error)
+        if body != "":
+            mail_notification(subject, body)
     else:
         print("Failed to retrieve the list of access points. Status Code: ", ap_response.status_code)
 
