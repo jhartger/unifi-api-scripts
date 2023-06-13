@@ -9,11 +9,15 @@ from mail_notification import mail_notification
 
 load_dotenv()
 
+# Retrieve UniFi controller details from environment variables
 controller_ip = os.getenv("CONTROLLER_IP")
 controller_port = os.getenv("CONTROLLER_PORT")
 controller_username = os.getenv("CONTROLLER_USERNAME")
 controller_password = os.getenv("CONTROLLER_PASSWORD")
 site_name = os.getenv("SITE_NAME")
+
+# Subject for mail
+subject = os.getenv("SUBJECT")
 
 # Disable warnings about insecure requests to avoid cluttering the output.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -36,7 +40,7 @@ if login_response.status_code == 200:
     cookies = login_response.cookies
 
     # List for AP's which encountered issues
-    ap_list_error = None
+    body = "List of all UAP's currently online\n"
 
     # Retrieve AP information and send mail if error occurred
     ap_response = requests.get(ap_url, cookies=cookies, verify=False)
@@ -44,13 +48,13 @@ if login_response.status_code == 200:
         ap_list = ap_response.json()["data"]
 
         for ap in ap_list:
-            if ap["state"] == 1:
-                new_ap = {f"Access Point: {['name']}", f"MAC Address: {ap['mac']}",
-                          f"Status: {ap['state']}", f"IP: {ap['ip']}"}
-                ap_list_error.append(new_ap)
+            if "name" not in ap:
+                continue
+            if ap["state"] == 1 and ap['type'] == "uap":
+                body += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
 
-    if ap_list_error is not None:
-        mail_notification("RBW UAP Restart Issues", ap_list_error)
+    if body != "":
+        mail_notification(subject, body)
 
     # get data for all access points of current site
     ap_response = requests.get(ap_url, cookies=cookies, verify=True)
@@ -60,12 +64,13 @@ if login_response.status_code == 200:
 
         # Iterate over the access points and print their details
         for ap in access_points:
-            print("Access Point:")
-            print(f"Name: {ap['name']}")
-            print(f"MAC Address: {ap['mac']}")
-            print(f"Model: {ap['model']}")
-            print(f"Status: {ap['state']}")
-            print("")
+            if ap['type'] == "uap":
+                print("Access Point:")
+                print(f"Name: {ap['name']}")
+                print(f"MAC Address: {ap['mac']}")
+                print(f"Model: {ap['model']}")
+                print(f"Status: {ap['state']}")
+                print("")
     else:
         print("AP request failed. Status Code: ", ap_response.status_code)
 
