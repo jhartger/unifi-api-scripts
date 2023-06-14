@@ -81,7 +81,8 @@ if login_response.status_code == 200:
         print("Rolling restart of access points completed.")
 
         # List for AP's which encountered issues
-        body = "List of all UAP's currently online\n"
+        body_1 = "These AP's are reported offline and might have issues\n"
+        body_2 = ""
 
         # Retrieve AP information and send mail if error occurred
         ap_response = requests.get(ap_url, cookies=cookies, verify=False)
@@ -91,11 +92,11 @@ if login_response.status_code == 200:
             for ap in ap_list:
                 if "name" not in ap:
                     continue
-                if ap["state"] == 1 and ap['type'] == "uap":
-                    body += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
+                if ap["state"] != 1 and ap['type'] == "uap":
+                    body_2 += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
 
-        if body != "":
-            mail_notification(subject, body)
+        if body_2 != "":
+            mail_notification(subject, body_1 + body_2)
     else:
         print("Failed to retrieve the list of access points. Status Code: ", ap_response.status_code)
 
