@@ -1,6 +1,10 @@
 import requests
 import urllib3
 import os
+import dotenv
+
+dotenv.load_dotenv()
+
 
 # Retrieve UniFi controller details from environment variables
 controller_ip = os.getenv("CONTROLLER_IP")
