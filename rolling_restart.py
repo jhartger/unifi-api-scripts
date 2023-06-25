@@ -69,6 +69,7 @@ if login_response.status_code == 200:
                                         break
                             else:
                                 time.sleep(5)  # Wait for 5 seconds before checking the status again
+                                print("Access point is still restarting")
                                 continue
                         else:
                             print(f"Failed to retrieve the status of access point {ap['mac']}. Moving to the next AP. "
@@ -82,31 +83,56 @@ if login_response.status_code == 200:
 
         print("Rolling restart of access points completed.")
 
-        # List for AP's which encountered issues
-        body = "List of all UAP's currently online\n"
+        # Create a new list to store ap's items
+        new_ap_list = []
 
-        # Retrieve AP information and send mail if error occurred
-        ap_response = requests.get(ap_url, cookies=cookies, verify=False)
-        if ap_response.status_code == 200:
-            ap_list = ap_response.json()["data"]
+        for ap in ap_list:
+            if "name" not in ap:  # devices without alias don't have a 'name' field
+                continue
+            if ap["type"] == "uap" and ap["state"] != 1:
+                new_ap_list.append({
+                    "Name": ap["name"],
+                    "MAC Address": ap["mac"],
+                    "IP Address": ap["ip"],
+                    "State": ap["state"]
+                })
 
-            for ap in ap_list:
-                if "name" not in ap:
-                    continue
-                if ap["state"] != 1 and ap['type'] == "uap":
-                    # Wait for the access point to come back online or until 5 minutes have passed
-                    timeout = time.time() + 300  # 5 minutes timeout
-                    while True:
-                        if time.time() > timeout:
-                            print(f"Timeout occurred for access point {ap['mac']}. Moving to the next AP.")
-                            break
-                        else:
-                            time.sleep(5)  # Wait for 5 seconds before checking the status again
-                            continue
-                    body += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
+        if new_ap_list:
+            # Convert new_ap_list into a formatted string
+            subject = "UAP restart issues"
+            body = "The following devices are experiencing issues\n\n"
+            for ap in new_ap_list:
+                for key, value in ap.items():
+                    body += f"{key}: {value}\n"
+                body += "\n"
 
-        if body != "":
             mail_notification(subject, body)
+
+        # # List for AP's which encountered issues
+        # body = "List of all UAP's currently online\n"
+        #
+        # # Retrieve AP information and send mail if error occurred
+        # ap_response = requests.get(ap_url, cookies=cookies, verify=False)
+        # if ap_response.status_code == 200:
+        #     ap_list = ap_response.json()["data"]
+        #
+        #     for ap in ap_list:
+        #         if "name" not in ap:
+        #             continue
+        #         if ap["state"] != 1 and ap['type'] == "uap":
+        #             # Wait for the access point to come back online or until 5 minutes have passed
+        #             timeout = time.time() + 300  # 5 minutes timeout
+        #             while True:
+        #                 if time.time() > timeout:
+        #                     print(f"Timeout occurred for access point {ap['mac']}. Moving to the next AP.")
+        #                     break
+        #                 else:
+        #                     time.sleep(5)  # Wait for 5 seconds before checking the status again
+        #                     continue
+        #             body += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
+        #
+        # if body != "":
+        #     mail_notification(subject, body)
     else:
         print("Failed to retrieve the list of access points. Status Code: ", ap_response.status_code)
 
