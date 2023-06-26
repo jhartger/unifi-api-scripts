@@ -17,9 +17,6 @@ controller_username = os.getenv("CONTROLLER_USERNAME")
 controller_password = os.getenv("CONTROLLER_PASSWORD")
 site_name = os.getenv("SITE_NAME")
 
-# Subject for mail
-subject = os.getenv("SUBJECT")
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # API endpoints
@@ -108,31 +105,6 @@ if login_response.status_code == 200:
 
             mail_notification(subject, body)
 
-        # # List for AP's which encountered issues
-        # body = "List of all UAP's currently online\n"
-        #
-        # # Retrieve AP information and send mail if error occurred
-        # ap_response = requests.get(ap_url, cookies=cookies, verify=False)
-        # if ap_response.status_code == 200:
-        #     ap_list = ap_response.json()["data"]
-        #
-        #     for ap in ap_list:
-        #         if "name" not in ap:
-        #             continue
-        #         if ap["state"] != 1 and ap['type'] == "uap":
-        #             # Wait for the access point to come back online or until 5 minutes have passed
-        #             timeout = time.time() + 300  # 5 minutes timeout
-        #             while True:
-        #                 if time.time() > timeout:
-        #                     print(f"Timeout occurred for access point {ap['mac']}. Moving to the next AP.")
-        #                     break
-        #                 else:
-        #                     time.sleep(5)  # Wait for 5 seconds before checking the status again
-        #                     continue
-        #             body += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
-        #
-        # if body != "":
-        #     mail_notification(subject, body)
     else:
         print("Failed to retrieve the list of access points. Status Code: ", ap_response.status_code)
 
