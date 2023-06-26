@@ -39,23 +39,6 @@ if login_response.status_code == 200:
     print("Login successful.")
     cookies = login_response.cookies
 
-    # List for AP's which encountered issues
-    body = "List of all UAP's currently online\n"
-
-    # Retrieve AP information and send mail if error occurred
-    ap_response = requests.get(ap_url, cookies=cookies, verify=False)
-    if ap_response.status_code == 200:
-        ap_list = ap_response.json()["data"]
-
-        for ap in ap_list:
-            if "name" not in ap:
-                continue
-            if ap["state"] == 1 and ap['type'] == "uap":
-                body += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
-
-    if body != "":
-        mail_notification(subject, body)
-
     # get data for all access points of current site
     ap_response = requests.get(ap_url, cookies=cookies, verify=True)
     if ap_response.status_code == 200:
