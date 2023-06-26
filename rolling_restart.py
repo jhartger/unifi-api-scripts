@@ -83,6 +83,7 @@ if login_response.status_code == 200:
         # Create a new list to store ap's items
         new_ap_list = []
 
+
         for ap in ap_list:
             if "name" not in ap:  # devices without alias don't have a 'name' field
                 continue
