@@ -1,5 +1,6 @@
 # unifi-api-scripts
 
+## Files
 
 ### ap_list_request.py
 
@@ -36,6 +37,3 @@ A utility script for sending notification emails. It uses the environment variab
 
 Contributions to this repository are welcome. If you encounter any issues or have suggestions for improvements, please open an issue or submit a pull request.
 
-## License
-
-This project is licensed under the [MIT License](LICENSE).
