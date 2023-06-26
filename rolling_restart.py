@@ -17,9 +17,6 @@ controller_username = os.getenv("CONTROLLER_USERNAME")
 controller_password = os.getenv("CONTROLLER_PASSWORD")
 site_name = os.getenv("SITE_NAME")
 
-# Subject for mail
-subject = os.getenv("SUBJECT")
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # API endpoints
@@ -42,61 +39,73 @@ if login_response.status_code == 200:
         ap_list = ap_response.json()["data"]
 
         for ap in ap_list:
-            # Restart each access point
-            restart_ap_url_with_mac = f"{restart_ap_url}/{ap['_id']}"
-            restart_response = requests.post(restart_ap_url_with_mac, cookies=cookies, verify=False)
+            if "name" not in ap:
+                continue
+            if ap['type'] == "uap":
+                # Restart each access point
+                restart_response = requests.post(restart_ap_url, json={"mac": ap["mac"]}, cookies=cookies, verify=False)
 
-            if restart_response.status_code == 200:
-                print(f"Access point {ap['mac']} restart command issued.")
+                if restart_response.status_code == 200:
+                    print(f"Access point {ap['mac']} restart command issued.")
 
-                # Wait for the access point to come back online or until 5 minutes have passed
-                timeout = time.time() + 300  # 5 minutes timeout
-                while True:
-                    if time.time() > timeout:
-                        print(f"Timeout occurred for access point {ap['mac']}. Moving to the next AP.")
-                        break
+                    # Wait for the access point to come back online or until 5 minutes have passed
+                    timeout = time.time() + 300  # 5 minutes timeout
+                    while True:
+                        if time.time() > timeout:
+                            print(f"Timeout occurred for access point {ap['mac']}. Moving to the next AP.")
+                            break
 
-                    # Check the status of the access point
-                    ap_status_response = requests.get(ap_url, cookies=cookies, verify=False)
-                    if ap_status_response.status_code == 200:
-                        ap_status_list = ap_status_response.json()["data"]
-                        for ap_status in ap_status_list:
-                            if ap_status["_id"] == ap["_id"]:
-                                if ap_status["state"] == 1:  # Access point is online
-                                    print(f"Access point {ap['mac']} is back online.")
-                                    break
+                        # Check the status of the access point
+                        ap_status_response = requests.get(ap_url, cookies=cookies, verify=False)
+                        if ap_status_response.status_code == 200:
+                            ap_status_list = ap_status_response.json()["data"]
+                            for ap_status in ap_status_list:
+                                if ap_status["_id"] == ap["_id"]:
+                                    if ap_status["state"] == 1:  # Access point is online
+                                        print(f"Access point {ap['mac']} is back online.")
+                                        break
+                            else:
+                                time.sleep(5)  # Wait for 5 seconds before checking the status again
+                                print("Access point is still restarting")
+                                continue
                         else:
-                            time.sleep(5)  # Wait for 5 seconds before checking the status again
-                            continue
-                    else:
-                        print(f"Failed to retrieve the status of access point {ap['mac']}. Moving to the next AP. "
-                              f"Status Code: ", ap_status_response.status_code)
-                        break
+                            print(f"Failed to retrieve the status of access point {ap['mac']}. Moving to the next AP. "
+                                  f"Status Code: ", ap_status_response.status_code)
+                            break
 
-                    break  # Break out of the while loop if the access point is online
-            else:
-                print(f"Failed to issue restart command for access point {ap['mac']}. Status Code: ",
-                      restart_response.status_code)
+                        break  # Break out of the while loop if the access point is online
+                else:
+                    print(f"Failed to issue restart command for access point {ap['mac']}. Status Code: ",
+                          restart_response.status_code)
 
         print("Rolling restart of access points completed.")
 
-        # List for AP's which encountered issues
-        body_1 = "These AP's are reported offline and might have issues\n"
-        body_2 = ""
+        # Create a new list to store ap's items
+        new_ap_list = []
 
-        # Retrieve AP information and send mail if error occurred
-        ap_response = requests.get(ap_url, cookies=cookies, verify=False)
-        if ap_response.status_code == 200:
-            ap_list = ap_response.json()["data"]
 
-            for ap in ap_list:
-                if "name" not in ap:
-                    continue
-                if ap["state"] != 1 and ap['type'] == "uap":
-                    body_2 += "Access Point:" + "\n" f"Name: {ap['name']}" + "\n" f"MAC Address: {ap['mac']}" + "\n\n"
+        for ap in ap_list:
+            if "name" not in ap:  # devices without alias don't have a 'name' field
+                continue
+            if ap["type"] == "uap" and ap["state"] != 1:
+                new_ap_list.append({
+                    "Name": ap["name"],
+                    "MAC Address": ap["mac"],
+                    "IP Address": ap["ip"],
+                    "State": ap["state"]
+                })
 
-        if body_2 != "":
-            mail_notification(subject, body_1 + body_2)
+        if new_ap_list:
+            # Convert new_ap_list into a formatted string
+            subject = "UAP restart issues"
+            body = "The following devices are experiencing issues\n\n"
+            for ap in new_ap_list:
+                for key, value in ap.items():
+                    body += f"{key}: {value}\n"
+                body += "\n"
+
+            mail_notification(subject, body)
+
     else:
         print("Failed to retrieve the list of access points. Status Code: ", ap_response.status_code)
 
