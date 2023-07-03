@@ -1,6 +1,4 @@
 import os
-import time
-
 import requests
 import urllib3
 from dotenv import load_dotenv
@@ -28,6 +26,12 @@ logout_url = f"https://{controller_ip}:{controller_port}/api/logout"
 ap_url = f"https://{controller_ip}:{controller_port}/api/s/{site_name}/stat/device"
 restart_ap_url = f"https://{controller_ip}:{controller_port}/api/s/{site_name}/cmd/devmgr/restart"
 
+states = {0: "disconnected",
+          1: "connected",
+          4: "upgrading",
+          5: "provisioning",
+          6: "heartbeat missed"}
+
 # Login to UniFi controller
 login_data = {"username": controller_username, "password": controller_password}
 login_response = requests.post(login_url, json=login_data, verify=True)
@@ -44,15 +48,16 @@ if login_response.status_code == 200:
         new_ap_list = []
 
         for ap in ap_list:
+            state = ap["state"]
             print(f"Checking Access point {ap['name']} / {ap['mac']}.")
             if "name" not in ap: # devices without alias don't have a 'name' field
                 continue
-            if ap["type"] == "uap" and ap["state"] != 1:
+            if ap["type"] == "uap" and ap["state"] == 1:
                 new_ap_list.append({
                     "Name": ap["name"],
                     "MAC Address": ap["mac"],
                     "IP Address": ap["ip"],
-                    "State": ap["state"]
+                    "State": f"{state} ({states[state]})"
                 })
             else:
                 print(f"Access point {ap['name']} / {ap['mac']} appears to be online.")
@@ -78,3 +83,4 @@ if login_response.status_code == 200:
         print("Failed to logout.")
 else:
     print("Login failed. Status Code: ", login_response.status_code)
+
