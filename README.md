@@ -23,6 +23,15 @@ This script performs a rolling restart of all access points in the UniFi control
 A utility script for sending notification emails. It uses the environment variables defined in the `.env` file for the SMTP server configuration and email addresses.
 
 
+### UAP state values
+
+0 = disconnected
+1 = connected
+4 = upgrading
+5 = provisioning
+6 = heartbeat missed
+
+
 ## Installation
 
 1. Clone this repository to your local machine.
