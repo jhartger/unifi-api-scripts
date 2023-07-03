@@ -25,11 +25,11 @@ A utility script for sending notification emails. It uses the environment variab
 
 ### UAP state values
 
-0 = disconnected
-1 = connected
-4 = upgrading
-5 = provisioning
-6 = heartbeat missed
+0 = disconnected <br>
+1 = connected <br>
+4 = upgrading <br>
+5 = provisioning <br>
+6 = heartbeat missed <br>
 
 
 ## Installation
