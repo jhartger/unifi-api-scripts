@@ -44,6 +44,7 @@ if login_response.status_code == 200:
         new_ap_list = []
 
         for ap in ap_list:
+            print(f"Checking Access point {ap['name']} / {ap['mac']}.")
             if "name" not in ap: # devices without alias don't have a 'name' field
                 continue
             if ap["type"] == "uap" and ap["state"] != 1:
@@ -53,7 +54,8 @@ if login_response.status_code == 200:
                     "IP Address": ap["ip"],
                     "State": ap["state"]
                 })
-
+            else:
+                print(f"Access point {ap['name']} / {ap['mac']} appears to be online.")
         if new_ap_list:
             # Convert new_ap_list into a formatted string
             subject = "UAP connectivity check"
