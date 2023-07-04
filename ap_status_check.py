@@ -52,7 +52,7 @@ if login_response.status_code == 200:
             print(f"Checking Access point {ap['name']} / {ap['mac']}.")
             if "name" not in ap: # devices without alias don't have a 'name' field
                 continue
-            if ap["type"] == "uap" and ap["state"] == 1:
+            if ap["type"] == "uap" and ap["state"] != 1:
                 new_ap_list.append({
                     "Name": ap["name"],
                     "MAC Address": ap["mac"],
