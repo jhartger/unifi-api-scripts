@@ -1,4 +1,6 @@
 import os
+import time
+
 import requests
 import urllib3
 from dotenv import load_dotenv
@@ -50,15 +52,40 @@ if login_response.status_code == 200:
         for ap in ap_list:
             state = ap["state"]
             print(f"Checking Access point {ap['name']} / {ap['mac']}.")
-            if "name" not in ap: # devices without alias don't have a 'name' field
+            if "name" not in ap: # devices without alias don't have a 'name' field and won't be checked
                 continue
-            if ap["type"] == "uap" and ap["state"] != 1:
-                new_ap_list.append({
-                    "Name": ap["name"],
-                    "MAC Address": ap["mac"],
-                    "IP Address": ap["ip"],
-                    "State": f"{state} ({states[state]})"
-                })
+            if ap["state"] != 1 and ap["type"] == "uap":
+
+                # Wait 5 minutes for the access point to come back online, if not add it to the list of access points
+                # with issues
+                timeout = time.time() + 300  # 5 minutes timeout
+                while True:
+                    if time.time() > timeout:
+                        new_ap_list.append({
+                            "Name": ap["name"],
+                            "MAC Address": ap["mac"],
+                            "IP Address": ap["ip"],
+                            "State": f"{state} ({states[state]})"
+                        })
+                        break
+
+                    # Check the status of the access point
+                    ap_status_response = requests.get(ap_url, cookies=cookies, verify=False)
+                    if ap_status_response.status_code == 200:
+                        ap_status_list = ap_status_response.json()["data"]
+                        for ap_status in ap_status_list:
+                            if ap_status["_id"] == ap["_id"]:
+                                if ap_status["state"] == 1:  # Access point is online
+                                    break
+                        else:
+                            time.sleep(5)  # Wait for 5 seconds before checking the status again
+                            continue
+                    else:
+                        print(f"Failed to retrieve the status of access point {ap['mac']}. Moving to the next AP. "
+                              f"Status Code: ", ap_status_response.status_code)
+                        break
+
+                    break  # Break out of the while loop if the access point is online
             else:
                 print(f"Access point {ap['name']} / {ap['mac']} appears to be online.")
         if new_ap_list:
