@@ -1,6 +1,6 @@
 import os
 import time
-
+import json
 import requests
 import urllib3
 from dotenv import load_dotenv
@@ -34,6 +34,16 @@ states = {0: "disconnected",
           5: "provisioning",
           6: "heartbeat missed"}
 
+# File to keep track of offline APs states
+offline_aps_file = "offline_aps.json"
+
+# load the APs data
+if os.path.exists(offline_aps_file):
+    with open(offline_aps_file, "r") as file:
+        offline_aps = json.load(file)
+else:
+    offline_aps = {}
+
 # Login to UniFi controller
 login_data = {"username": controller_username, "password": controller_password}
 login_response = requests.post(login_url, json=login_data, verify=True)
@@ -61,12 +71,16 @@ if login_response.status_code == 200:
                 timeout = time.time() + 300  # 5 minutes timeout
                 while True:
                     if time.time() > timeout:
-                        new_ap_list.append({
+                        ap_key = ap["mac"]
+                        if ap_key not in offline_aps:
+                            new_ap_list.append({
                             "Name": ap["name"],
                             "MAC Address": ap["mac"],
                             "IP Address": ap["ip"],
                             "State": f"{state} ({states[state]})"
                         })
+                        offline_aps[ap_key] = True
+                        print(f"Added {ap['name']} / {ap['mac']} to offline_aps.")
                         break
 
                     # Check the status of the access point
@@ -76,6 +90,9 @@ if login_response.status_code == 200:
                         for ap_status in ap_status_list:
                             if ap_status["_id"] == ap["_id"]:
                                 if ap_status["state"] == 1:  # Access point is online
+                                    ap_key = ap["mac"]
+                                    if ap_key in offline_aps:
+                                       del offline_aps[ap_key]
                                     break
                         else:
                             time.sleep(5)  # Wait for 5 seconds before checking the status again
@@ -86,8 +103,13 @@ if login_response.status_code == 200:
                         break
 
                     break  # Break out of the while loop if the access point is online
+
+
             else:
-                print(f"Access point {ap['name']} / {ap['mac']} appears to be online.")
+                    print(f"Access point {ap['name']} / {ap['mac']} appears to be online.")
+                    ap_key = ap["mac"]
+                    if ap_key in offline_aps:
+                        del offline_aps[ap_key]
         if new_ap_list:
             # Convert new_ap_list into a formatted string
             subject = "UAP connectivity check"
@@ -98,6 +120,9 @@ if login_response.status_code == 200:
                 body += "\n"
 
             mail_notification(subject, body)
+
+        with open(offline_aps_file, "w") as file:
+            json.dump(offline_aps, file)
 
     else:
         print("Failed to retrieve the list of access points. Status Code: ", ap_response.status_code)
